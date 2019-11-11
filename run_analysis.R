@@ -1,7 +1,12 @@
+#**********************************************************
+# Initial setup
+#**********************************************************
 
 # Set working directy, change this filepath to suit
-setwd("E:\\Coursera\\Datascience\\Module 3\\Assignment")
+setwd("D:\\Coursera\\datascience\\Module 3 - Data Wranling\\Assignment")
 
+# Packages
+library(dplyr)
 #**********************************************************
 # Task 1 merge training and test sets
 #**********************************************************
@@ -16,41 +21,13 @@ date.downloaded = date()
 unzip(file, junkpaths = TRUE) #junkpaths to remove having to folder dive
 rm(file) # free up workspace memory
 
-# Step 3 read in files
+# Step 3 read files into data frames
 
-# 3a list of variables (column names)
-features = read.table("features.txt",col.names = c("rowid","feature"))
-variable.names = as.character(features$feature)
+test.set = read.table("X_test.txt") 
+train.set = read.table("X_train.txt")
 
-# 3b data sets (training and test)
-test.set = read.table("X_test.txt",col.names = variable.names) 
-train.set = read.table("X_train.txt", col.names = variable.names)
-
-# 3c data activity labels (gives the factor level only, no level)
-test.labels = read.table("y_test.txt") 
-train.labels = read.table("y_train.txt")
-
-# 3d mapping of activity id to activity
-activities = read.table("activity_labels.txt",col.names = c("id","activity"))
-
-# Step 4 convert activities to factor with string labels
-test.labels = factor(test.labels,
-                     levels = activities$id, labels =activities$activity)
-train.labels = factor(train.labels,
-                      levels = activities$id, labels =activities$activity)
-
-# Step 5 append the activity to each data set as a new column called "activity"
-test.set$activity = test.labels
-train.set$activity = train.labels
-
-# Step 6 create new data frame with training and test sets merged
-library(plyr)
-bbd = rbind.fill(train.set,test.set) # big boi data set (go huge)
-
-# Step 6a check I haven't cooked it
-ncol(bbd) == ncol(train.set)
-ncol(bbd) == ncol(test.set)
-nrow(bbd) == (nrow(train.set) + nrow(test.set))
+# Step 4 merge together into single data frame (append one beneath the other)
+full.set = rbind.fill(train.set,test.set) # big boi data set (go huge)
 
 #**********************************************************
 # Task 2 extracting only mean and s.d measurements
@@ -59,22 +36,83 @@ nrow(bbd) == (nrow(train.set) + nrow(test.set))
 # features_info.txt shows all mean should have string "mean()"
 # and std() for mean and standard deviation
 
+# Step 1 read in the variable (column) names from file
+features = read.table("features.txt",col.names = c("rowid","feature"))
+
 # Step 1 create regular expression to find "mean" or "std" in strings
 regex = "[Mm][Ee][Aa][Nn]|[Ss][Tt](\\.)?[Dd]" # mean or std variations as chars
 
 # Step 2 search for "mean" or "std" in the variable names
-subsetcols = grepl(regex,names(bbd)) # true if that col name is a match
+subsetcols = grepl(regex,features$feature) # true if that col name is a match
 
 # Step 3 extract only the columns that were a match into a new data frame
-bbd.subset = bbd[,subsetcols] # extract only columns
+full.subset = full.set[,subsetcols] # extract only columns that matched
+
+#**********************************************************
+# Task 3 change activity names from numbers to descriptions
+#**********************************************************
+# Step 1 open file mapping activity to ID number
+activities = read.table("activity_labels.txt",col.names = c("id","activity"))
+
+# Step 2 open activity data sets
+test.labels = read.table("y_test.txt") 
+train.labels = read.table("y_train.txt")
+
+# Step 3 convert activity numbers to factors with descriptions
+test.labelsf = factor(test.labels$V1,
+                      levels = activities$id, labels =activities$activity)
+
+train.labelsf = factor(train.labels$V1,
+                      levels = activities$id, labels =activities$activity)
+# Confirm it works
+table(test.labelsf)
+table(train.labelsf)
+# Yat it works!
 
 
 #**********************************************************
-# Task 3 name activities in the data set descriptvely
+# Task 4 apply labels to variables (columns)
 #**********************************************************
-# Already completed in step 4 of Task 1 by converting activities from numbers
-# into labelled factors (e.g. "WALKING", "RUNNING" etc)
-table(bbd$activity)
-head(bbd$activity)
-levels(bbd$activity)
-labels(bbd$activity)
+
+# Step 1 exctract only the variable names (not the row ID)
+variables = as.character(features$feature)
+
+# Step 2 clean this into tidy data variable names
+variables.clean = tolower(variables) # make all lower case
+
+# Step 3 apply these as column names to data set
+colnames(full.set) = variables.clean
+
+#**********************************************************
+# Task 5 means for each activity and each subject
+#**********************************************************
+
+# Step 1 add new column "activity" to each data set
+test.set$activity = test.labelsf
+train.set$activity = train.labelsf
+
+# Step 2 add new column with subject info
+# 2a read in subject info
+test.subject = read.table('subject_test.txt', col.names = "subject")
+train.subject = read.table('subject_train.txt', col.names = "subject")
+
+# 2b add new column to each data set
+test.set$subject = test.subject$subject
+train.set$subject = train.subject$subject
+
+# Step 3 merge new sets into single data set using task 1 method
+full.set = bind_rows(train.set,test.set)
+
+# Step 4 apply column names
+colnames(full.set) = c(variables.clean,"activity","subject") # variables + activity column
+
+# Step 5 subset using task 2 method
+full.subset = full.set[,subsetcols] # extract only columns that matched (now with activity)
+
+# Step 6 create a "row" for each combination of activity and subject
+
+dfnew <- full.subset %>%
+        group_by(subject,activity) %>%
+        summarise_all(mean)
+head(dfnew)
+# nicely done dplyr!#
