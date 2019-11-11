@@ -1,7 +1,7 @@
-# tidydata
-Coursera Datascience Module 3 Assignment
+#A uthor: Jade Forlani-Brennan
 
-This is the README for run_analysis.R created by Jade Forlani-Brennan on 11th Nov 2019.
+# Overview
+This is the README for run_analysis.R created by Jade Forlani-Brennan on 11th Nov 2019 for the  Coursera Datascience Module 3 Assignment.
 
 # R Version
 Script ran succesfully on R version 3.6.1 (64 bit) using R studio on a Windows machine.
